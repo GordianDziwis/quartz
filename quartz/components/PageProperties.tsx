@@ -1,7 +1,7 @@
 import { QuartzComponent, QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import { classNames } from "../util/lang"
 import { ComponentChildren, ComponentType } from "preact"
-import { externalLinkRegex, wikilinkRegex } from "../plugins/transformers/ofm"
+import { wikilinkRegex } from "../plugins/transformers/ofm"
 import style from "./styles/pageProperties.scss"
 import { pathToRoot, simplifySlug, slugTag, transformLink } from "../util/path"
 import { getFullInternalLink } from "../plugins/transformers/links"
@@ -11,9 +11,7 @@ export type FieldComponent = ComponentType<
 >
 
 interface PagePropertiesOptions {
-  fieldComponents: {
-    [name: string]: FieldComponent
-  }
+  fieldComponents: { [name: string]: FieldComponent }
   defaultFieldComponent: FieldComponent
 }
 
@@ -47,28 +45,135 @@ function renderInternalLink(
   )
 }
 
+// Markdown link regex for use in global matching
+const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g
+
+// Naked URL regex - matches http:// or https:// followed by non-whitespace characters
+const nakedUrlRegex = /https?:\/\/[^\s<>\[\]"']+/g
+
+function renderStringWithLinks(
+  text: string,
+  props: QuartzComponentProps,
+): ComponentChildren {
+  const parts: ComponentChildren[] = []
+  let lastIndex = 0
+
+  // Create a combined regex that matches both wikilinks and markdown links
+  // We need to use a global regex to find all matches
+  const wikilinkGlobal = new RegExp(wikilinkRegex.source, 'g')
+
+  // Collect all matches with their positions
+  type LinkMatch = {
+    index: number
+    length: number
+    render: () => ComponentChildren
+  }
+
+  const matches: LinkMatch[] = []
+
+  // Find all wikilinks (excluding embeds that start with !)
+  let match: RegExpExecArray | null
+  while ((match = wikilinkGlobal.exec(text)) !== null) {
+    if (!match[0].startsWith("!")) {
+      const m = match
+      matches.push({
+        index: m.index,
+        length: m[0].length,
+        render: () => renderInternalLink(m[0], m[1], m[2], m[3], props),
+      })
+    }
+  }
+
+  // Find all markdown links
+  while ((match = mdLinkRegex.exec(text)) !== null) {
+    const m = match
+    const displayText = m[1]
+    const url = m[2]
+    const isExternal = url.startsWith("http://") || url.startsWith("https://")
+
+    matches.push({
+      index: m.index,
+      length: m[0].length,
+      render: () => (
+        <a
+          class={isExternal ? "external" : "internal"}
+          href={url}
+          target={isExternal ? "_blank" : undefined}
+        >
+          {displayText}
+        </a>
+      ),
+    })
+  }
+
+  // Find all naked external links
+  while ((match = nakedUrlRegex.exec(text)) !== null) {
+    const m = match
+    const url = m[0]
+
+    matches.push({
+      index: m.index,
+      length: m[0].length,
+      render: () => (
+        <a class="external" href={url} target="_blank">
+          {url}
+        </a>
+      ),
+    })
+  }
+
+  // If no matches, return the original text
+  if (matches.length === 0) {
+    return text
+  }
+
+  // Sort matches by index
+  matches.sort((a, b) => a.index - b.index)
+
+  // Filter out overlapping matches (keep the first one)
+  const filteredMatches: LinkMatch[] = []
+  for (const m of matches) {
+    const last = filteredMatches[filteredMatches.length - 1]
+    if (!last || m.index >= last.index + last.length) {
+      filteredMatches.push(m)
+    }
+  }
+
+  // Build the result with text segments and rendered links
+  for (const m of filteredMatches) {
+    // Add text before this match
+    if (m.index > lastIndex) {
+      parts.push(text.slice(lastIndex, m.index))
+    }
+
+    // Add the rendered link
+    parts.push(m.render())
+    lastIndex = m.index + m.length
+  }
+
+  // Add any remaining text after the last match
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+
+  return <>{parts}</>
+}
+
 export const DefaultFieldComponent: FieldComponent = (props) => {
   const { fieldValue } = props
+
   if (fieldValue === null) {
     return "null"
   }
+
   if (fieldValue === undefined) {
     return null
   }
+
   if (typeof fieldValue === "string") {
-    if (fieldValue.match(externalLinkRegex)) {
-      return (
-        <a class="external" href={fieldValue} target="_blank">
-          {fieldValue}
-        </a>
-      )
-    }
-    const [match] = [...fieldValue.matchAll(wikilinkRegex)]
-    if (match && match[0] === fieldValue && !fieldValue.startsWith("!")) {
-      return renderInternalLink(fieldValue, match[1], match[2], match[3], props)
-    }
-    return fieldValue
+    return renderStringWithLinks(fieldValue, props)
   }
+
   if (Array.isArray(fieldValue)) {
     if (fieldValue.length === 0) {
       return null
@@ -83,15 +188,18 @@ export const DefaultFieldComponent: FieldComponent = (props) => {
       </ul>
     )
   }
+
   if (typeof fieldValue === "object") {
     return <code>{JSON.stringify(fieldValue, null, 2)}</code>
   }
+
   return fieldValue.toString?.() ?? null
 }
 
 export const TagFieldComponent: FieldComponent = ({ fieldValue, fileData }) => {
   const tags = Array.isArray(fieldValue) ? fieldValue : [fieldValue]
   const baseDir = pathToRoot(fileData.slug!)
+
   return (
     <ul class="property-list">
       {tags.map((tag) => {
@@ -115,6 +223,9 @@ const defaultOptions: PagePropertiesOptions = {
     title: HIDE,
     date: HIDE,
     cssclasses: HIDE,
+    publish: HIDE,
+    aliases: HIDE,
+    lang: HIDE,
     tags: TagFieldComponent,
     ["hide-props"]: HIDE,
   },
@@ -138,11 +249,14 @@ export default ((opts?: Partial<PagePropertiesOptions>) => {
       if (hide.includes(name)) {
         return null
       }
+
       const FieldComponent = fieldComponents[name] ?? DefaultFieldComponent
+
       // allow hiding through config
       if (FieldComponent === HIDE) {
         return null
       }
+
       return (
         <>
           <dt>{name}</dt>

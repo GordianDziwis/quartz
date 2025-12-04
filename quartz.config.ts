@@ -20,7 +20,7 @@ const lightTheme = parseJsonc('./quartz/static/summerfruit-light.jsonc')
  */
 const config: QuartzConfig = {
   configuration: {
-    pageTitle: "Quartz 4",
+    pageTitle: "GORDIAN DZIWIS",
     pageTitleSuffix: "",
     enableSPA: true,
     enablePopovers: true,
@@ -28,8 +28,8 @@ const config: QuartzConfig = {
       provider: "plausible",
     },
     locale: "en-US",
-    baseUrl: "quartz.jzhao.xyz",
-    ignorePatterns: ["private", "templates", ".obsidian"],
+    baseUrl: "dziw.is",
+    ignorePatterns: ["assets", "models", ".obsidian", "templates"],
     defaultDateType: "modified",
     theme: {
       fontOrigin: "googleFonts",
@@ -82,11 +82,13 @@ const config: QuartzConfig = {
       Plugin.ObsidianFlavoredMarkdown({ enableInHtmlEmbed: false }),
       Plugin.GitHubFlavoredMarkdown(),
       Plugin.TableOfContents(),
-      Plugin.CrawlLinks({ markdownLinkResolution: "shortest" }),
+      Plugin.CrawlLinks({
+        markdownLinkResolution: "shortest", indexFrontmatterWikilinks: true
+      }),
       Plugin.Description(),
       Plugin.Latex({ renderEngine: "katex" }),
     ],
-    filters: [Plugin.RemoveDrafts()],
+    filters: [Plugin.ExplicitPublish()],
     emitters: [
       Plugin.AliasRedirects(),
       Plugin.ComponentResources(),
@@ -101,8 +103,8 @@ const config: QuartzConfig = {
       Plugin.Static(),
       Plugin.Favicon(),
       Plugin.NotFoundPage(),
-      // Comment out CustomOgImages to speed up build time
-      Plugin.CustomOgImages(),
+      // Commentga out CustomOgImages to speed up build time
+      // Plugin.CustomOgImages(),
     ],
   },
 }
