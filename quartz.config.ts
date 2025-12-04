@@ -1,6 +1,18 @@
 import { QuartzConfig } from "./quartz/cfg"
 import * as Plugin from "./quartz/plugins"
 
+import fs from 'fs'
+
+// Strip comments from JSONC (simple approach)
+function parseJsonc(filePath: string) {
+  const content = fs.readFileSync(filePath, 'utf-8')
+  // Remove single-line comments
+  const stripped = content.replace(/\/\/.*$/gm, '')
+  return JSON.parse(stripped)
+}
+
+const darkTheme = parseJsonc('./quartz/static/summerfruit-dark.jsonc')
+const lightTheme = parseJsonc('./quartz/static/summerfruit-light.jsonc')
 /**
  * Quartz 4 Configuration
  *
@@ -23,32 +35,32 @@ const config: QuartzConfig = {
       fontOrigin: "googleFonts",
       cdnCaching: true,
       typography: {
-        header: "Schibsted Grotesk",
+        header: "IBM Plex Mono",
         body: "Source Sans Pro",
         code: "IBM Plex Mono",
       },
       colors: {
         lightMode: {
-          light: "#faf8f8",
-          lightgray: "#e5e5e5",
-          gray: "#b8b8b8",
-          darkgray: "#4e4e4e",
-          dark: "#2b2b2b",
-          secondary: "#284b63",
-          tertiary: "#84a59d",
-          highlight: "rgba(143, 159, 169, 0.15)",
-          textHighlight: "#fff23688",
+          light: "#E0E0E0",
+          lightgray: "#D0D0D0",
+          gray: "#505050",
+          darkgray: "#101010",
+          dark: "#000000",
+          secondary: "#FF0086",
+          tertiary: "#101010",
+          highlight: "#D0D0D0",
+          textHighlight: "#CC6633",
         },
         darkMode: {
-          light: "#161618",
-          lightgray: "#393639",
-          gray: "#646464",
-          darkgray: "#d4d4d4",
-          dark: "#ebebec",
-          secondary: "#7b97aa",
-          tertiary: "#84a59d",
-          highlight: "rgba(143, 159, 169, 0.15)",
-          textHighlight: "#b3aa0288",
+          light: "#000000",
+          lightgray: "#303030",
+          gray: "#505050",
+          darkgray: "#D0D0D0",
+          dark: "#E0E0E0",
+          secondary: "#FF0086",
+          tertiary: "#D0D0D0",
+          highlight: "#303030",
+          textHighlight: "#CC6633",
         },
       },
     },
@@ -61,8 +73,8 @@ const config: QuartzConfig = {
       }),
       Plugin.SyntaxHighlighting({
         theme: {
-          light: "github-light",
-          dark: "github-dark",
+          light: lightTheme,
+          dark: darkTheme,
         },
         keepBackground: false,
       }),
