@@ -3,11 +3,9 @@ import remarkFrontmatter from "remark-frontmatter"
 import { QuartzTransformerPlugin } from "../types"
 import yaml from "js-yaml"
 import toml from "toml"
-import { FullSlug } from "../../util/path"
+import { FilePath, FullSlug, slugifyFilePath } from "../../util/path"
 import { QuartzPluginData } from "../vfile"
 import { i18n } from "../../i18n"
-
-
 
 export interface Options {
   delimiters: string | [string, string]
@@ -69,7 +67,25 @@ export const FrontMatterFixer: QuartzTransformerPlugin<Partial<Options>> = (user
             } else {
               data.title = file.stem ?? i18n(cfg.configuration.locale).propertyDefaults.title
             }
-            file.data.frontmatter = data as QuartzPluginData["frontmatter"]
+
+            const publishPath = data.publish
+            if (
+              typeof publishPath === "string"
+              && publishPath !== "true"
+              && publishPath !== "false"
+              && publishPath.length > 0
+            ) {
+              file.data.slug = slugifyFilePath(publishPath as FilePath)
+
+              const path = slugifyFilePath(file.data.relativePath as FilePath)
+              if (!data.aliases) {
+                data.aliases = []
+              }
+              if (!data.aliases.includes(path)) {
+                data.aliases.push(path)
+              }
+            } 
+            file.data.frontmatter = data as QuartzPluginData["frontmatter"]    
           }
         },
       ]
@@ -97,6 +113,7 @@ declare module "vfile" {
       cssclasses: string[]
       socialImage: string
       comments: boolean | string
+      type: string
     }>
   }
 }
