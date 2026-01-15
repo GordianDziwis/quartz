@@ -24,7 +24,7 @@ export default ((opts?: Partial<BacklinksOptions>) => {
     cfg,
   }: QuartzComponentProps) => {
     const slug = fileData.slug ? simplifySlug(fileData.slug) : null
-    const aliases = [fileData.frontmatter?.aliases ?? []].flat()
+    const aliases = (fileData.frontmatter?.aliases ?? []).flat().filter(Boolean)
     const slugs = [
       slug,
       ...aliases.map((alias: string) => simplifySlug(alias as FullSlug))
