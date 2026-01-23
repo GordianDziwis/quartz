@@ -94,15 +94,26 @@ function renderStringWithLinks(
     matches.push({
       index: m.index,
       length: m[0].length,
-      render: () => (
-        <a
-          class={isExternal ? "external" : "internal"}
-          href={url}
-          target={isExternal ? "_blank" : undefined}
-        >
-          {displayText}
-        </a>
-      ),
+      render: () => {
+        if (isExternal) {
+          return (
+            <a class="external" href={url} target="_blank">
+              {displayText}
+            </a>
+          )
+        }
+        // Transform internal markdown links the same way as wikilinks
+        const href = transformLink(props.fileData.slug!, url, {
+          strategy: "shortest",
+          allSlugs: props.ctx.allSlugs,
+        })
+        const full = getFullInternalLink(href, simplifySlug(props.fileData.slug!))
+        return (
+          <a class="internal" href={href} data-slug={full}>
+            {displayText}
+          </a>
+        )
+      },
     })
   }
 

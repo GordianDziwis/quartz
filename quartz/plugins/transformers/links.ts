@@ -1,11 +1,13 @@
 import { QuartzTransformerPlugin } from "../types"
 import {
+  FilePath,
   FullSlug,
   RelativeURL,
   SimpleSlug,
   TransformOptions,
   stripSlashes,
   simplifySlug,
+  slugifyFilePath,
   splitAnchor,
   transformLink,
 } from "../../util/path"
@@ -56,7 +58,10 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
       return [
         () => {
           return (tree: Root, file) => {
-            const curSlug = simplifySlug(file.data.slug!)
+            // Use relativePath (original source path) for link resolution,
+            // not slug which may be overwritten by publish frontmatter
+            const sourceSlug = slugifyFilePath(file.data.relativePath as FilePath)
+            const curSlug = simplifySlug(sourceSlug)
             const outgoing: Set<SimpleSlug> = new Set()
 
             const transformOptions: TransformOptions = {
@@ -120,7 +125,7 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                 )
                 if (isInternal) {
                   dest = node.properties.href = transformLink(
-                    file.data.slug!,
+                    sourceSlug,
                     dest,
                     transformOptions,
                   )
@@ -156,7 +161,7 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                 if (!isAbsoluteUrl(node.properties.src, { httpOnly: false })) {
                   let dest = node.properties.src as RelativeURL
                   dest = node.properties.src = transformLink(
-                    file.data.slug!,
+                    sourceSlug,
                     dest,
                     transformOptions,
                   )
@@ -183,7 +188,7 @@ export const CrawlLinks: QuartzTransformerPlugin<Partial<Options>> = (userOpts) 
                 const [_, rawFp, rawHeader] = captures
                 const fp = rawFp?.trim() ?? ""
                 const anchor = rawHeader?.trim() ?? ""
-                const dest = transformLink(file.data.slug!, fp + anchor, transformOptions)
+                const dest = transformLink(sourceSlug, fp + anchor, transformOptions)
                 const full = getFullInternalLink(dest, curSlug)
                 const simple = simplifySlug(full)
                 outgoing.add(simple)

@@ -80,3 +80,8 @@ npx tsx --test path/to/test.ts  # Run single test file
 ```
 
 Test files: `*.test.ts` colocated with source files.
+
+## Gotchas
+
+- **Link resolution**: Use `file.data.relativePath` (not `slug`) for resolving links - `slug` is overwritten by `publish` frontmatter
+- **Sharp images**: Read as buffer first to avoid libvips issues: `sharp(fs.readFileSync(path))`
